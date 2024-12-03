@@ -1,0 +1,71 @@
+
+/*PART 1*/
+SELECT SUM(leftint*rightint)
+FROM (
+	SELECT 
+			ISNULL(TRY_CAST(b.leftmost AS INT),0) AS leftint
+			,ISNULL(TRY_CAST(b.rightmost AS INT),0) AS rightint
+	FROM (
+		SELECT SUBSTRING(a.trimmed,0,CHARINDEX(',',a.trimmed)) leftmost,SUBSTRING(a.trimmed,CHARINDEX(',',a.trimmed)+1,LEN(a.trimmed)-CHARINDEX(',',a.trimmed)) rightmost,trimmed,value
+		FROM (
+			SELECT LEFT(REPLACE(value,'ul(',''),CHARINDEX(')',REPLACE(value,'ul(',''))-1) trimmed,value
+			FROM STRING_SPLIT(@input,'m')
+			WHERE value LIKE 'ul(%)%'
+		) a
+	) b
+) c
+
+/*PART 2*/
+SELECT SUM(leftint*rightint)
+FROM (
+		SELECT DISTINCT leftint,rightint,e.RunningInputSpot
+		FROM (
+			SELECT 
+					ISNULL(TRY_CAST(d.leftmost AS INT),0) AS leftint
+					,ISNULL(TRY_CAST(d.rightmost AS INT),0) AS rightint
+					,d.RunningInputSpot
+			FROM (
+				SELECT SUBSTRING(c.trimmed,0,CHARINDEX(',',c.trimmed)) leftmost
+						,SUBSTRING(c.trimmed,CHARINDEX(',',c.trimmed)+1,LEN(c.trimmed)-CHARINDEX(',',c.trimmed)) rightmost
+						,trimmed
+						,RunningInputSpot
+				FROM (
+					SELECT LEFT(REPLACE(value,'ul(',''),CHARINDEX(')',REPLACE(value,'ul(',''))-1) trimmed
+						,RunningInputSpot
+						,ordinal
+						,value
+					FROM (
+						SELECT SUM(a.SegmentLen) OVER (ORDER BY ordinal)-1 RunningInputSpot
+							,ordinal
+							,value
+						FROM (
+							SELECT LEN(value)+1 AS SegmentLen
+								,ordinal
+								,value
+							FROM STRING_SPLIT(@input,'m',1)
+						) a
+					) b
+					WHERE value LIKE 'ul(%)%'
+				) c
+			) d
+		) e
+		INNER JOIN (
+			SELECT g.isenabled, g.EnableStart,ISNULL(lag(g.EnableStart) OVER (ORDER BY g.EnableStart),0) AS LeadSpot,value
+			FROM (
+				SELECT f.IsEnabled,SUM(f.EnableLen) OVER (ORDER BY ordinal)-1 EnableStart,value
+				FROM (
+					SELECT CASE WHEN value LIKE 'o()%' 
+							THEN 1 
+							WHEN value  LIKE 'on''t()%' 
+							THEN 0 
+							WHEN ordinal = 1 THEN 1 END AS IsEnabled
+						,LEN(value)+1 AS EnableLen
+						,ordinal
+						,value
+					FROM STRING_SPLIT(@input,'d',1)
+					) f
+			)g
+		)h
+		ON e.RunningInputSpot BETWEEN h.LeadSpot AND h.EnableStart 
+	WHERE isenabled = 1
+) i
