@@ -1006,3 +1006,13 @@ FROM (SELECT leftmost,ROW_NUMBER() OVER (ORDER BY leftmost ASC) AS Leftorder
 INNER JOIN (SELECT rightmost,ROW_NUMBER() OVER (ORDER BY rightmost ASC) AS Rightorder
 				FROM #locations) rightmost
 ON rightmost.Rightorder = leftmost.Leftorder
+
+
+/*Part 2*/
+SELECT SUM(leftmost*rightmost.countrightmost) AS SimilarityScore
+FROM #locations leftmost
+INNER JOIN (SELECT rightmost
+				,COUNT(1) AS countrightmost
+				FROM #locations
+				GROUP BY rightmost) rightmost
+ON rightmost.rightmost = leftmost.leftmost
